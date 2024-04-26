@@ -1,0 +1,47 @@
+version: '3.7'
+
+services:
+  database:
+    image: postgres:latest
+    container_name: database-service
+    hostname: database-service
+    volumes:
+      - pgsql_data:/var/lib/postgresql/data
+      - ./src/test/resources/database/docker:/docker-entrypoint-initdb.d
+    ports:
+      - '5432:5432'
+    environment:
+      - POSTGRES_USER=employee
+      - POSTGRES_PASSWORD=employee
+      - POSTGRES_DB=employee
+    networks:
+      java-service-net:
+        aliases:
+          - database-service
+  webservices:
+    container_name: employee-services
+    image: employee-portal-services:latest
+    build:
+      context: .
+      dockerfile: Dockerfile.dev
+    ports:
+      - '8080:8080'
+    expose:
+      - 8080
+    environment:
+      - SPRING_PROFILES_ACTIVE=docker
+      - DATABASE_HOST=database-service
+      - DATABASE_PORT=5432
+    depends_on:
+      - database
+    command: ["./wait-for-it.sh", "database-service:5432", "--strict", "--timeout=20"]
+    networks:
+      java-service-net:
+        aliases:
+          - java-service
+
+volumes:
+  pgsql_data:
+
+networks:
+  java-service-net:
